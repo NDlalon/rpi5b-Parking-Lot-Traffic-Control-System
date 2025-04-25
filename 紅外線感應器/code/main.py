@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import RPi.GPIO as GPIO
 import threading
 from threading import Timer
@@ -18,9 +20,10 @@ class EntryFSM:
         self.oddTimer.cancel()
 
     #進入流程處理
-    def process(self,pin):
+    def process(self,pin,processlock):
         self.isRunning=True
-        
+        global laneVehicleCount
+
         if(self.inState=='idle'):
             if(pin==A1_sensor):
                 self.inState='A1_first'                       
@@ -33,6 +36,8 @@ class EntryFSM:
         elif(self.inState=='A1_first'):
             if(pin==A2_sensor):
                 self.onway+=1
+                with laneVehicleCountLock:
+                    laneVehicleCount+=1
                 self.inState='idle'
                 flash_control(B_WarningLight,True)
                 traffic_control('B','Red')
@@ -42,17 +47,19 @@ class EntryFSM:
         elif(self.inState=='A2_first'):
             if(pin==A1_sensor):
                 self.inState='idle'
-                if(self.onway>0):
+                if(self.onway>0 and self.onway==laneVehicleCount and not(processlock[0])):
                     self.onway-=1
+                    with laneVehicleCountLock:
+                        laneVehicleCount-=1
+                        processlock[0]=True
                 self.beginTimer.cancel()
 
         if(self.outState=='idle'):
             if(pin==B2_sensor):
-                if(self.onway>0):
-                    self.outState='B2_Entry'
-                    self.lastTimer.cancel()
-                    self.lastTimer=Timer(thirdTimer,self.reset)
-                    self.lastTimer.start()
+                self.outState='B2_Entry'
+                self.lastTimer.cancel()
+                self.lastTimer=Timer(thirdTimer,self.reset)
+                self.lastTimer.start()
             elif(pin==B1_sensor):
                 self.outState='B1_Entry'
                 self.oddTimer=Timer(firstTimer,self.reset,args=('out',))     
@@ -60,7 +67,11 @@ class EntryFSM:
         elif(self.outState=='B2_Entry'):
             if(pin==B1_sensor):
                 self.outState='idle'
-                self.onway-=1
+                if(self.onway>0 and laneVehicleCount>0 and not(processlock[0])):
+                    self.onway-=1
+                    with laneVehicleCountLock:
+                        laneVehicleCount-=1
+                        processlock[0]=True
                 if(self.onway<=0):
                     self.onway=0
                     flash_control(B_WarningLight,False)
@@ -72,12 +83,16 @@ class EntryFSM:
                 self.oddTimer.cancel()
 
         self.isRunning=False
-
+        
     #重置狀態
     def reset(self,part='All'):
+        global laneVehicleCount
+
         if(part=='All'):
             self.inState='idle'
             self.outState='idle'
+            with laneVehicleCountLock:
+                laneVehicleCount-=self.onway
             self.onway=0
             flash_control(B_WarningLight,False)
             traffic_control('B','Green')
@@ -101,9 +116,10 @@ class ExitFSM:
         self.oddTimer.cancel()
 
     #退出流程處理
-    def process(self,pin):
+    def process(self,pin,processlock):
         self.isRunning=True
-        
+        global laneVehicleCount
+
         if(self.inState=='idle'):
             if(pin==B1_sensor):
                 self.inState='B1_first'                       
@@ -116,6 +132,8 @@ class ExitFSM:
         elif(self.inState=='B1_first'):
             if(pin==B2_sensor):
                 self.onway+=1
+                with laneVehicleCountLock:
+                    laneVehicleCount+=1
                 self.inState='idle'
                 flash_control(A_WarningLight,True)
                 traffic_control('A','Red')
@@ -125,17 +143,19 @@ class ExitFSM:
         elif(self.inState=='B2_first'):
             if(pin==B1_sensor):
                 self.inState='idle'
-                if(self.onway>0):
+                if(self.onway>0 and self.onway==laneVehicleCount and not(processlock[0])):
                     self.onway-=1
+                    with laneVehicleCountLock:
+                        laneVehicleCount-=1
+                        processlock[0]=True
                 self.beginTimer.cancel()
 
         if(self.outState=='idle'):
             if(pin==A2_sensor):
-                if(self.onway>0):
-                    self.outState='A2_Entry'
-                    self.lastTimer.cancel()
-                    self.lastTimer=Timer(thirdTimer,self.reset)
-                    self.lastTimer.start()
+                self.outState='A2_Entry'
+                self.lastTimer.cancel()
+                self.lastTimer=Timer(thirdTimer,self.reset)
+                self.lastTimer.start()
             elif(pin==A1_sensor):
                 self.outState='A1_Entry'
                 self.oddTimer=Timer(firstTimer,self.reset,args=('out',))     
@@ -143,7 +163,11 @@ class ExitFSM:
         elif(self.outState=='A2_Entry'):
             if(pin==A1_sensor):
                 self.outState='idle'
-                self.onway-=1
+                if(self.onway>0 and laneVehicleCount>0 and not(processlock[0])):
+                    self.onway-=1
+                    with laneVehicleCountLock:
+                        laneVehicleCount-=1
+                        processlock[0]=True
                 if(self.onway<=0):
                     self.onway=0
                     flash_control(A_WarningLight,False)
@@ -158,9 +182,13 @@ class ExitFSM:
 
     #重置狀態
     def reset(self,part='All'):
+        global laneVehicleCount
+
         if(part=='All'):
             self.inState='idle'
             self.outState='idle'
+            with laneVehicleCountLock:
+                laneVehicleCount-=self.onway
             self.onway=0
             flash_control(A_WarningLight,False)
             traffic_control('A','Green')
@@ -168,23 +196,27 @@ class ExitFSM:
             self.inState='idle'
         elif(part=='out'):
             self.outState='idle'
-    
+
 #腳位定義
 A1_sensor=11
 A2_sensor=13
-A_WarningLight=15
-A_RedLight=16
-A_GreenLight=18
-B1_sensor=29
-B2_sensor=31
-B_WarningLight=37
-B_RedLight=22
-B_GreenLight=24
+A_WarningLight=36
+A_RedLight=29
+A_GreenLight=31
+B1_sensor=16
+B2_sensor=18
+B_WarningLight=38
+B_RedLight=33
+B_GreenLight=35
 
 #計時器秒數設定
 firstTimer=5
 secondTimer=30
 thirdTimer=30
+
+#紀錄車道內數量
+laneVehicleCount=0
+laneVehicleCountLock = threading.Lock()
 
 #進出流程
 Entry=EntryFSM()
@@ -229,17 +261,18 @@ def setup():
 
 #按鈕中斷執行程序
 def SensorCallBack(pin):
+    processlock=[False]
 
     #建立進入流程執行緒
     if(not(Entry.isRunning)):
-        threadEntry=threading.Thread(target=Entry.process, args=(pin,))
+        threadEntry=threading.Thread(target=Entry.process, args=(pin,processlock,))
         threadEntry.start()
         
     #建立退出流程執行緒
     if(not(Exit.isRunning)):
-       threadExit=threading.Thread(target=Exit.process, args=(pin,))
+       threadExit=threading.Thread(target=Exit.process, args=(pin,processlock,))
        threadExit.start()
-
+    
 #=====警示燈控制=====
 def flash_control(Light,activ=False):
     if(activ):

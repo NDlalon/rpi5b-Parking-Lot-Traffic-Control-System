@@ -69,7 +69,6 @@ class ExitFSM:
             elif(self.coilAState=='coilA2_Entry'):
                 self.coilAState='idle'
                 self.coilATimer.cancel()
-            print('coilAState:',self.coilAState)
         elif(pin==coil_sensorA2):
             if(self.coilAState=='idle'):
                 self.coilAState='coilA2_Entry'
@@ -85,7 +84,7 @@ class ExitFSM:
                 self.WarningLightTimer.cancel()
                 self.WarningLightTimer=Timer(ExitTimer,self.reset)
                 self.WarningLightTimer.start()
-            print('coilAState:',self.coilAState)
+
         #coilB1,coilB2 senser
         elif(pin==coil_sensorB1):
             if(self.coilBState=='idle'):
@@ -96,7 +95,6 @@ class ExitFSM:
             elif(self.coilBState=='coilB2_Entry'):
                 self.coilBState='idle'
                 self.coilBTimer.cancel()
-            print('coilBState:',self.coilBState)
         elif(pin==coil_sensorB2):
             if(self.coilBState=='idle'):
                 self.coilBState='coilB2_Entry'
@@ -112,7 +110,7 @@ class ExitFSM:
                 self.WarningLightTimer.cancel()
                 self.WarningLightTimer=Timer(ExitTimer,self.reset)
                 self.WarningLightTimer.start()
-            print('coilBState:',self.coilBState)    
+
         #infrared senser
         elif(pin==infrared_sensorA1):
             if(self.infraredState=='idle'):
@@ -123,7 +121,6 @@ class ExitFSM:
             elif(self.infraredState=='infraredA2_Entry'):
                 self.infraredState='idle'
                 self.infraredTimer.cancel()
-            print('infraredState:',self.infraredState)
         elif(pin==infrared_sensorA2):
             if(self.infraredState=='idle'):
                 self.infraredState='infraredA2_Entry'
@@ -139,7 +136,6 @@ class ExitFSM:
                 self.WarningLightTimer.cancel()
                 self.WarningLightTimer=Timer(ExitTimer,self.reset)
                 self.WarningLightTimer.start()
-            print('infraredState:',self.infraredState)
 
         self.isRunning=False
 
@@ -151,13 +147,10 @@ class ExitFSM:
             traffic_control('A','Green')
         elif(part=='coilA'):
             self.coilAState='idle'
-            print('reset coilAState:',self.coilAState)
         elif(part=='coilB'):
             self.coilBState='idle'
-            print('reset coilBState:',self.coilBState)
         elif(part=='infrared'):
             self.infraredState='idle'
-            print('reset infraredState:',self.infraredState)
 
 #腳位定義
 coil_sensorA1=7

@@ -15,8 +15,17 @@ class EntryFSM:
     #進入流程處理
     def process(self,pin):
         self.isRunning=True
+        global FenceToken
 
         if(pin==remote):
+            self.WarningLightTimer.cancel()
+            self.WarningLightTimer=Timer(EntryTimer,self.FenceClose)
+            self.WarningLightTimer.start()
+
+            with FenceTokenLock:
+                FenceToken='EntryFSM'
+                fence_control('up')
+
             flash_control(Entry1_WarningLight,True)
             flash_control(Entry2_WarningLight,True)
             flash_control(Entry3_WarningLight,True)
@@ -24,11 +33,31 @@ class EntryFSM:
             flash_control(Entry5_WarningLight,True)
             traffic_control('B','Red')
             
-            self.WarningLightTimer.cancel()
-            self.WarningLightTimer=Timer(EntryTimer,self.reset)
-            self.WarningLightTimer.start()
-
         self.isRunning=False
+
+    #關閉柵欄機
+    def FenceClose(self):
+        global FenceToken
+
+        if(FenceToken=='EntryFSM'):
+            with FenceTokenLock:
+                FenceToken='EntryFSM_now'
+
+        start_time=time.time()
+        while(time.time()-start_time<FenceTimer):
+            if(FenceToken=='EntryFSM'):
+                return 
+            elif(GPIO.input(pressureSensor)==GPIO.HIGH):
+                fence_control('up')
+                start_time=time.time()
+            elif(GPIO.input(pressureSensor)==GPIO.LOW and FenceToken=='EntryFSM_now'):
+                fence_control('down')
+            time.sleep(0.01)
+
+        if(FenceToken=='EntryFSM_now'):  
+            fence_control('idle')
+        self.reset()
+
     #重置狀態
     def reset(self):
         flash_control(Entry1_WarningLight,False)
@@ -58,6 +87,7 @@ class ExitFSM:
     #退出流程處理
     def process(self,pin):
         self.isRunning=True
+        global FenceToken
 
         #coilA1,coilA2 senser
         if(pin==coil_sensorA1):
@@ -76,14 +106,18 @@ class ExitFSM:
                 self.coilATimer=Timer(stateTimer,self.reset,args=('coilA',))
                 self.coilATimer.start()
             elif(self.coilAState=='coilA1_Entry'):
+                self.coilATimer.cancel()
+                self.WarningLightTimer.cancel()
+                self.WarningLightTimer=Timer(ExitTimer,self.FenceClose)
+                self.WarningLightTimer.start()
                 self.coilAState='idle'
+                with FenceTokenLock:
+                    FenceToken='ExitFSM'
+                    fence_control('up')
                 flash_control(Exit1_WarningLight,True)
                 flash_control(Exit2_WarningLight,True)
                 traffic_control('A','Red')
-                self.coilATimer.cancel()
-                self.WarningLightTimer.cancel()
-                self.WarningLightTimer=Timer(ExitTimer,self.reset)
-                self.WarningLightTimer.start()
+                
 
         #coilB1,coilB2 senser
         elif(pin==coil_sensorB1):
@@ -102,14 +136,17 @@ class ExitFSM:
                 self.coilBTimer=Timer(stateTimer,self.reset,args=('coilB',))
                 self.coilBTimer.start()
             elif(self.coilBState=='coilB1_Entry'):
+                self.coilBTimer.cancel()
+                self.WarningLightTimer.cancel()
+                self.WarningLightTimer=Timer(ExitTimer,self.FenceClose)
+                self.WarningLightTimer.start()
                 self.coilBState='idle'
+                with FenceTokenLock:
+                    FenceToken='ExitFSM'
+                    fence_control('up')
                 flash_control(Exit1_WarningLight,True)
                 flash_control(Exit2_WarningLight,True)
                 traffic_control('A','Red')
-                self.coilBTimer.cancel()
-                self.WarningLightTimer.cancel()
-                self.WarningLightTimer=Timer(ExitTimer,self.reset)
-                self.WarningLightTimer.start()
 
         #infrared senser
         elif(pin==infrared_sensorA1):
@@ -128,16 +165,43 @@ class ExitFSM:
                 self.infraredTimer=Timer(stateTimer,self.reset,args=('infrared',))
                 self.infraredTimer.start()
             elif(self.infraredState=='infraredA1_Entry'):
+                self.infraredTimer.cancel()
+                self.WarningLightTimer.cancel()
+                self.WarningLightTimer=Timer(ExitTimer,self.FenceClose)
+                self.WarningLightTimer.start()
                 self.infraredState='idle'
+                with FenceTokenLock:
+                    FenceToken='ExitFSM'
+                    fence_control('up')
                 flash_control(Exit1_WarningLight,True)
                 flash_control(Exit2_WarningLight,True)
                 traffic_control('A','Red')
-                self.infraredTimer.cancel()
-                self.WarningLightTimer.cancel()
-                self.WarningLightTimer=Timer(ExitTimer,self.reset)
-                self.WarningLightTimer.start()
+                
 
         self.isRunning=False
+
+    #關閉柵欄機
+    def FenceClose(self):
+        global FenceToken
+
+        if(FenceToken=='ExitFSM'):
+            with FenceTokenLock:
+                FenceToken='ExitFSM_now'
+
+        start_time=time.time()
+        while(time.time()-start_time<FenceTimer):
+            if(FenceToken=='ExitFSM'):
+                return
+            elif(GPIO.input(pressureSensor)==GPIO.HIGH):
+                fence_control('up')
+                start_time=time.time()
+            elif(GPIO.input(pressureSensor)==GPIO.LOW and FenceToken=='ExitFSM_now'):
+                fence_control('down')
+            time.sleep(0.01)
+
+        if(FenceToken=='ExitFSM_now'):
+            fence_control('idle')
+        self.reset()
 
     #重置狀態
     def reset(self,part='ALL'):
@@ -161,11 +225,16 @@ infrared_sensorA1=16
 infrared_sensorA2=18
 remote=22
 
+pressureSensor=36
+
+TimerMSB=19
+TimerLSB=21
+
 Entry1_WarningLight=29
 Entry2_WarningLight=31
 Entry3_WarningLight=33
 Entry4_WarningLight=35
-Entry5_WarningLight=36
+Entry5_WarningLight=23
 Exit1_WarningLight=38
 Exit2_WarningLight=40
 A_RedLight=37
@@ -173,10 +242,16 @@ A_GreenLight=24
 B_RedLight=26
 B_GreenLight=32
 
+FenceUP=3
+FenceDOWN=5
+FenceToken=''
+FenceTokenLock=threading.Lock()
+
 #計時器秒數設定
-EntryTimer=30
-ExitTimer=30
+EntryTimer=0 #由程式啟動時設定
+ExitTimer=0 #由程式啟動時設定
 stateTimer=5
+FenceTimer=5
 
 #進出流程
 Entry=EntryFSM()
@@ -186,15 +261,7 @@ Exit=ExitFSM()
 def setup():
     GPIO.setmode(GPIO.BOARD)
     
-    #sensor
-    GPIO.setup(coil_sensorA1,GPIO.IN)
-    GPIO.setup(coil_sensorA2,GPIO.IN)
-    GPIO.setup(coil_sensorB1,GPIO.IN)
-    GPIO.setup(coil_sensorB2,GPIO.IN)
-    GPIO.setup(infrared_sensorA1,GPIO.IN)
-    GPIO.setup(infrared_sensorA2,GPIO.IN)
-    GPIO.setup(remote,GPIO.IN)
-    #設定下拉電阻
+    #設定sensor與下拉電阻
     GPIO.setup(coil_sensorA1, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     GPIO.setup(coil_sensorA2, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     GPIO.setup(coil_sensorB1, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
@@ -202,6 +269,10 @@ def setup():
     GPIO.setup(infrared_sensorA1, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     GPIO.setup(infrared_sensorA2, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     GPIO.setup(remote, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup(pressureSensor,GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
+    #計時器秒數設定腳位與下拉電阻
+    GPIO.setup(TimerMSB,GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup(TimerLSB,GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
     #設定事件觸發
     GPIO.add_event_detect(coil_sensorA1,GPIO.RISING,callback=SensorCallBack ,bouncetime=200)
     GPIO.add_event_detect(coil_sensorA2,GPIO.RISING,callback=SensorCallBack ,bouncetime=200)
@@ -234,8 +305,14 @@ def setup():
     GPIO.output(A_GreenLight,GPIO.HIGH)
     GPIO.output(B_RedLight,GPIO.LOW)
     GPIO.output(B_GreenLight,GPIO.HIGH)
-
-
+    #柵欄機設定
+    GPIO.setup(FenceUP,GPIO.OUT)
+    GPIO.setup(FenceDOWN,GPIO.OUT)
+    GPIO.output(FenceUP,GPIO.LOW)
+    GPIO.output(FenceDOWN,GPIO.LOW)
+    #計時器秒數設定 
+    timerSetting()
+    
 #按鈕中斷執行程序
 def SensorCallBack(pin):
     #建立進入流程執行緒
@@ -275,6 +352,32 @@ def traffic_control(traffic,light):
     elif(light=='Green'):
         GPIO.output(red,GPIO.LOW)
         GPIO.output(green,GPIO.HIGH)
+
+#=====柵欄機控制=====
+def fence_control(state=''):
+    if(state=='up'):
+        GPIO.output(FenceDOWN,GPIO.LOW)
+        GPIO.output(FenceUP,GPIO.HIGH)
+    elif(state=='down'):
+        GPIO.output(FenceUP,GPIO.LOW)
+        GPIO.output(FenceDOWN,GPIO.HIGH)
+    elif(state=='idle'):
+        GPIO.output(FenceUP,GPIO.LOW)
+        GPIO.output(FenceDOWN,GPIO.LOW)
+
+#柵欄機時間設定
+def timerSetting():
+    global ExitTimer
+    global EntryTimer
+    second=10
+
+    if(GPIO.input(TimerMSB)==GPIO.HIGH):
+        second+=20
+    if(GPIO.input(TimerLSB)==GPIO.HIGH):
+        second+=10
+
+    EntryTimer=second
+    ExitTimer=second
 
 if __name__ == '__main__':
     setup()

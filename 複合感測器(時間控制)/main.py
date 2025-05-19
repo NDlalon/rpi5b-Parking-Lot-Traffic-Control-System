@@ -26,11 +26,7 @@ class EntryFSM:
                 FenceToken='EntryFSM'
                 fence_control('up')
 
-            flash_control(Entry1_WarningLight,True)
-            flash_control(Entry2_WarningLight,True)
-            flash_control(Entry3_WarningLight,True)
-            flash_control(Entry4_WarningLight,True)
-            flash_control(Entry5_WarningLight,True)
+            flash_control(Entry_WarningLight,True)
             traffic_control('B','Red')
             
         self.isRunning=False
@@ -60,11 +56,7 @@ class EntryFSM:
 
     #重置狀態
     def reset(self):
-        flash_control(Entry1_WarningLight,False)
-        flash_control(Entry2_WarningLight,False)
-        flash_control(Entry3_WarningLight,False)
-        flash_control(Entry4_WarningLight,False)
-        flash_control(Entry5_WarningLight,False)
+        flash_control(Entry_WarningLight,False)
         traffic_control('B','Green')
 
 #退出流程物件
@@ -114,8 +106,7 @@ class ExitFSM:
                 with FenceTokenLock:
                     FenceToken='ExitFSM'
                     fence_control('up')
-                flash_control(Exit1_WarningLight,True)
-                flash_control(Exit2_WarningLight,True)
+                flash_control(Exit_WarningLight,True)
                 traffic_control('A','Red')
                 
 
@@ -144,8 +135,7 @@ class ExitFSM:
                 with FenceTokenLock:
                     FenceToken='ExitFSM'
                     fence_control('up')
-                flash_control(Exit1_WarningLight,True)
-                flash_control(Exit2_WarningLight,True)
+                flash_control(Exit_WarningLight,True)
                 traffic_control('A','Red')
 
         #infrared senser
@@ -173,8 +163,7 @@ class ExitFSM:
                 with FenceTokenLock:
                     FenceToken='ExitFSM'
                     fence_control('up')
-                flash_control(Exit1_WarningLight,True)
-                flash_control(Exit2_WarningLight,True)
+                flash_control(Exit_WarningLight,True)
                 traffic_control('A','Red')
                 
 
@@ -206,8 +195,7 @@ class ExitFSM:
     #重置狀態
     def reset(self,part='ALL'):
         if(part=='ALL'):
-            flash_control(Exit1_WarningLight,False)
-            flash_control(Exit2_WarningLight,False)
+            flash_control(Exit_WarningLight,False)
             traffic_control('A','Green')
         elif(part=='coilA'):
             self.coilAState='idle'
@@ -225,25 +213,18 @@ infrared_sensorA1=16
 infrared_sensorA2=18
 remote=22
 
-pressureSensor=36
+pressureSensor=32
 
 TimerMSB=19
 TimerLSB=21
 
-Entry1_WarningLight=29
-Entry2_WarningLight=31
-Entry3_WarningLight=33
-Entry4_WarningLight=35
-Entry5_WarningLight=23
-Exit1_WarningLight=38
-Exit2_WarningLight=40
-A_RedLight=37
-A_GreenLight=24
-B_RedLight=26
-B_GreenLight=32
+Entry_WarningLight=35 
+Exit_WarningLight=38
+A_trafficLight=33
+B_trafficLight=36
 
-FenceUP=3
-FenceDOWN=5
+FenceUP=29
+FenceDOWN=31
 FenceToken=''
 FenceTokenLock=threading.Lock()
 
@@ -282,29 +263,15 @@ def setup():
     GPIO.add_event_detect(infrared_sensorA2,GPIO.RISING,callback=SensorCallBack ,bouncetime=200)
     GPIO.add_event_detect(remote,GPIO.RISING,callback=SensorCallBack ,bouncetime=200)
     #警示燈設定
-    GPIO.setup(Entry1_WarningLight,GPIO.OUT)
-    GPIO.setup(Entry2_WarningLight,GPIO.OUT)
-    GPIO.setup(Entry3_WarningLight,GPIO.OUT)
-    GPIO.setup(Entry4_WarningLight,GPIO.OUT)
-    GPIO.setup(Entry5_WarningLight,GPIO.OUT)
-    GPIO.setup(Exit1_WarningLight,GPIO.OUT)
-    GPIO.setup(Exit2_WarningLight,GPIO.OUT)
-    GPIO.output(Entry1_WarningLight,GPIO.LOW)
-    GPIO.output(Entry2_WarningLight,GPIO.LOW)
-    GPIO.output(Entry3_WarningLight,GPIO.LOW)
-    GPIO.output(Entry4_WarningLight,GPIO.LOW)
-    GPIO.output(Entry5_WarningLight,GPIO.LOW)
-    GPIO.output(Exit1_WarningLight,GPIO.LOW)
-    GPIO.output(Exit2_WarningLight,GPIO.LOW)
+    GPIO.setup(Entry_WarningLight,GPIO.OUT)
+    GPIO.setup(Exit_WarningLight,GPIO.OUT)
+    GPIO.output(Entry_WarningLight,GPIO.LOW)
+    GPIO.output(Exit_WarningLight,GPIO.LOW)
     #紅綠燈設定
-    GPIO.setup(A_RedLight,GPIO.OUT)
-    GPIO.setup(A_GreenLight,GPIO.OUT)
-    GPIO.setup(B_RedLight,GPIO.OUT)
-    GPIO.setup(B_GreenLight,GPIO.OUT)
-    GPIO.output(A_RedLight,GPIO.LOW)
-    GPIO.output(A_GreenLight,GPIO.HIGH)
-    GPIO.output(B_RedLight,GPIO.LOW)
-    GPIO.output(B_GreenLight,GPIO.HIGH)
+    GPIO.setup(A_trafficLight,GPIO.OUT)
+    GPIO.setup(B_trafficLight,GPIO.OUT)
+    GPIO.output(A_trafficLight,GPIO.LOW)
+    GPIO.output(B_trafficLight,GPIO.LOW)
     #柵欄機設定
     GPIO.setup(FenceUP,GPIO.OUT)
     GPIO.setup(FenceDOWN,GPIO.OUT)
@@ -336,22 +303,17 @@ def flash_control(Light,activ=False):
 
 #=====紅綠燈控制=====
 def traffic_control(traffic,light):
-    red=0
-    green=0
+    trafficLight=0
 
     if(traffic=='A'):
-        red=A_RedLight
-        green=A_GreenLight
+        trafficLight=A_trafficLight
     elif(traffic=='B'):
-        red=B_RedLight
-        green=B_GreenLight
+        trafficLight=B_trafficLight
 
     if(light=='Red'):
-        GPIO.output(red,GPIO.HIGH)
-        GPIO.output(green,GPIO.LOW)
+        GPIO.output(trafficLight,GPIO.HIGH)
     elif(light=='Green'):
-        GPIO.output(red,GPIO.LOW)
-        GPIO.output(green,GPIO.HIGH)
+        GPIO.output(trafficLight,GPIO.LOW)
 
 #=====柵欄機控制=====
 def fence_control(state=''):

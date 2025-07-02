@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+import serial
 import RPi.GPIO as GPIO
 import threading
 from threading import Timer
@@ -25,10 +25,10 @@ class EntryFSM:
             with FenceTokenLock:
                 FenceToken='EntryFSM'
                 fence_control('up')
-
             flash_control(Entry_WarningLight,True)
             traffic_control('B','Red')
-            
+            ser.write(b'Entry\n')
+
         self.isRunning=False
 
     #關閉柵欄機
@@ -58,6 +58,7 @@ class EntryFSM:
     def reset(self):
         flash_control(Entry_WarningLight,False)
         traffic_control('B','Green')
+        ser.write(b'Entry:idle\n')
 
 #退出流程物件
 class ExitFSM:
@@ -108,6 +109,7 @@ class ExitFSM:
                     fence_control('up')
                 flash_control(Exit_WarningLight,True)
                 traffic_control('A','Red')
+                ser.write(b'Exit\n')
                 
 
         #coilB1,coilB2 senser
@@ -137,6 +139,7 @@ class ExitFSM:
                     fence_control('up')
                 flash_control(Exit_WarningLight,True)
                 traffic_control('A','Red')
+                ser.write(b'Exit\n')
 
         #infrared senser
         elif(pin==infrared_sensorA1):
@@ -165,7 +168,7 @@ class ExitFSM:
                     fence_control('up')
                 flash_control(Exit_WarningLight,True)
                 traffic_control('A','Red')
-                
+                ser.write(b'Exit\n')  
 
         self.isRunning=False
 
@@ -197,6 +200,7 @@ class ExitFSM:
         if(part=='ALL'):
             flash_control(Exit_WarningLight,False)
             traffic_control('A','Green')
+            ser.write(b'Exit:idle\n')
         elif(part=='coilA'):
             self.coilAState='idle'
         elif(part=='coilB'):
@@ -279,7 +283,17 @@ def setup():
     GPIO.output(FenceDOWN,GPIO.LOW)
     #計時器秒數設定 
     timerSetting()
-    
+    # 開啟UART0 GP14 GP15
+    global ser
+    ser = serial.Serial(
+        port='/dev/ttyAMA0',
+        baudrate=115200,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS,
+        timeout=1
+    )
+
 #按鈕中斷執行程序
 def SensorCallBack(pin):
     #建立進入流程執行緒

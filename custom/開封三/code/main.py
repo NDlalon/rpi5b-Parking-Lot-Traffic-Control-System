@@ -234,6 +234,13 @@ ExitTimer=0 #由程式啟動時設定
 stateTimer=5
 FenceTimer=5
 
+#觸發方式
+edge=False   #(True為正緣處發 False為負緣觸發)
+gpioPotential={
+    True:GPIO.LOW,
+    False:GPIO.HIGH
+}
+
 #進出流程
 Entry=EntryFSM()
 Exit=ExitFSM()
@@ -265,18 +272,18 @@ def setup():
     #警示燈設定
     GPIO.setup(Entry_WarningLight,GPIO.OUT)
     GPIO.setup(Exit_WarningLight,GPIO.OUT)
-    GPIO.output(Entry_WarningLight,GPIO.LOW)
-    GPIO.output(Exit_WarningLight,GPIO.LOW)
+    GPIO.output(Entry_WarningLight,gpioPotential[edge])
+    GPIO.output(Exit_WarningLight,gpioPotential[edge])
     #紅綠燈設定
     GPIO.setup(A_trafficLight,GPIO.OUT)
     GPIO.setup(B_trafficLight,GPIO.OUT)
-    GPIO.output(A_trafficLight,GPIO.LOW)
-    GPIO.output(B_trafficLight,GPIO.LOW)
+    GPIO.output(A_trafficLight,gpioPotential[edge])
+    GPIO.output(B_trafficLight,gpioPotential[edge])
     #柵欄機設定
     GPIO.setup(FenceUP,GPIO.OUT)
     GPIO.setup(FenceDOWN,GPIO.OUT)
-    GPIO.output(FenceUP,GPIO.LOW)
-    GPIO.output(FenceDOWN,GPIO.LOW)
+    GPIO.output(FenceUP,GPIO.LOW) #柵欄機上須保持正緣觸發
+    GPIO.output(FenceDOWN,gpioPotential[edge])
     #計時器秒數設定 
     timerSetting()
     
@@ -297,9 +304,9 @@ def SensorCallBack(pin):
 #=====警示燈控制=====
 def flash_control(Light,activ=False):
     if(activ):
-        GPIO.output(Light,GPIO.HIGH)
+        GPIO.output(Light,gpioPotential[not edge])
     else:
-        GPIO.output(Light,GPIO.LOW)
+        GPIO.output(Light,gpioPotential[edge])
 
 #=====紅綠燈控制=====
 def traffic_control(traffic,light):
@@ -311,21 +318,22 @@ def traffic_control(traffic,light):
         trafficLight=B_trafficLight
 
     if(light=='Red'):
-        GPIO.output(trafficLight,GPIO.HIGH)
+        GPIO.output(trafficLight,gpioPotential[not edge])
     elif(light=='Green'):
-        GPIO.output(trafficLight,GPIO.LOW)
+        GPIO.output(trafficLight,gpioPotential[edge])
 
 #=====柵欄機控制=====
+#柵欄機上保持正緣觸發，確保樹莓派異常時能正常開啟
 def fence_control(state=''):
     if(state=='up'):
-        GPIO.output(FenceDOWN,GPIO.LOW)
+        GPIO.output(FenceDOWN,gpioPotential[edge])
         GPIO.output(FenceUP,GPIO.HIGH)
     elif(state=='down'):
         GPIO.output(FenceUP,GPIO.LOW)
-        GPIO.output(FenceDOWN,GPIO.HIGH)
+        GPIO.output(FenceDOWN,gpioPotential[not edge])
     elif(state=='idle'):
         GPIO.output(FenceUP,GPIO.LOW)
-        GPIO.output(FenceDOWN,GPIO.LOW)
+        GPIO.output(FenceDOWN,gpioPotential[edge])
 
 #柵欄機時間設定
 def timerSetting():
